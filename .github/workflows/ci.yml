@@ -1,0 +1,55 @@
+name: CI
+
+# Audits every cask in the tap so a hand edit (or a bumped version) cannot land
+# broken or with deprecated Cask DSL syntax.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Casks/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "Casks/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: macos-latest
+    steps:
+      - name: Check out the tap
+        uses: actions/checkout@v5
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@2026.09.13.1
+
+      - name: Expose the checkout as a tap
+        run: |
+          set -euo pipefail
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          repo=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          name=${repo#homebrew-}
+          tap_dir="$(brew --repository)/Library/Taps/${owner}/homebrew-${name}"
+          mkdir -p "$(dirname "${tap_dir}")"
+          rm -rf "${tap_dir}"
+          ln -s "${GITHUB_WORKSPACE}" "${tap_dir}"
+          echo "TAP=${owner}/${name}" >> "${GITHUB_ENV}"
+
+      - name: Style
+        run: brew style "${TAP}"
+
+      - name: Audit
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          casks=()
+          for file in Casks/*.rb; do
+            casks+=("${TAP}/$(basename "${file}" .rb)")
+          done
+          brew audit --cask --strict --online "${casks[@]}"

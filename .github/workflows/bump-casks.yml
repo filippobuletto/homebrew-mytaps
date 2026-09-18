@@ -1,0 +1,100 @@
+name: Bump casks
+
+# Checks every cask in this tap against its upstream releases once a day and
+# commits the new version + SHA-256 straight to the default branch.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report new versions without writing or pushing anything
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-casks
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    # Casks only exist on macOS runners.
+    runs-on: macos-latest
+    steps:
+      - name: Check out the tap
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@2026.09.13.1
+
+      - name: Expose the checkout as a tap
+        run: |
+          set -euo pipefail
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          repo=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          name=${repo#homebrew-}
+          tap_dir="$(brew --repository)/Library/Taps/${owner}/homebrew-${name}"
+          mkdir -p "$(dirname "${tap_dir}")"
+          rm -rf "${tap_dir}"
+          ln -s "${GITHUB_WORKSPACE}" "${tap_dir}"
+          echo "TAP=${owner}/${name}" >> "${GITHUB_ENV}"
+
+      - name: Look for newer upstream versions
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          brew livecheck --cask --json --quiet --newer-only --tap "${TAP}" > livecheck.json
+          jq -r '.[] | select(.version.outdated) | "\(.cask)\t\(.version.latest)"' \
+            livecheck.json > outdated.tsv
+          if [ -s outdated.tsv ]; then
+            echo "Outdated casks:"
+            cat outdated.tsv
+          else
+            echo "Every cask is up to date."
+          fi
+
+      - name: Bump the outdated casks
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          [ -s outdated.tsv ] || exit 0
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          dry_run_flag=()
+          [ "${DRY_RUN:-false}" = "true" ] && dry_run_flag=(--dry-run)
+
+          # --write-only --commit keeps everything local: brew rewrites the cask,
+          # re-downloads it to compute the SHA-256, runs audit + style, then
+          # commits on the current branch instead of opening a pull request.
+          while IFS=$'\t' read -r token version; do
+            [ -n "${token}" ] || continue
+            echo "::group::${token} -> ${version}"
+            brew bump-cask-pr \
+              --write-only --commit --no-browse \
+              "${dry_run_flag[@]}" \
+              --version="${version}" \
+              "${TAP}/${token}"
+            echo "::endgroup::"
+          done < outdated.tsv
+
+      - name: Push the bumps
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet "origin/${GITHUB_REF_NAME}" HEAD; then
+            echo "Nothing to push."
+            exit 0
+          fi
+          git log --oneline "origin/${GITHUB_REF_NAME}..HEAD"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
