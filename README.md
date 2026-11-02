@@ -42,7 +42,7 @@ resolves there first. Always pass the fully qualified name on the command line.
 | `alacritty` | `disable!` removed |
 | `aria2d` | `disable!` removed. Release 1.4.2 dropped the build number from its tag, so the version is a plain `1.4.2` instead of the old `version,build` pair, and livecheck follows GitHub releases instead of the Sparkle appcast |
 | `browserino` | `depends_on macos: ">= :ventura"` → `depends_on macos: :ventura`; `livecheck` added |
-| `freetube` | `disable!` removed; the legacy `on_big_sur :or_older` branch dropped in favour of a single version with `depends_on macos: :monterey` |
+| `freetube` | `disable!` removed; the legacy `on_big_sur :or_older` branch dropped in favour of a single version with `depends_on macos: :ventura` (0.26.0 raised the minimum from Monterey) |
 | `jd-gui` | `disable!` removed |
 | `mew-notch` | `verified:` dropped from `url`; `depends_on macos: ">= :sonoma"` → `depends_on macos: :sonoma`; `postflight` → `postflight_steps` |
 
