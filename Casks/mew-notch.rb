@@ -1,6 +1,6 @@
 cask "mew-notch" do
-  version "2.2.2"
-  sha256 "4af6dabf1bc78447b9403a4d4366f82fd57e1031cbcf3fcee1438d600d88ec47"
+  version "2.4.0"
+  sha256 "66b1308355e72720f29c7041083bbd0b81b3e9269411f63864eda1e4c4a6a44e"
 
   url "https://github.com/monuk7735/mew-notch/releases/download/#{version}/MewNotch-#{version}.dmg"
   name "MewNotch"

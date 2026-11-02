@@ -31,9 +31,9 @@ resolves there first. Always pass the fully qualified name on the command line.
 | `alacritty` | 0.17.0 | disabled upstream 2026-09-01, `:fails_gatekeeper_check` |
 | `aria2d` | 1.4.2 | disabled upstream 2026-09-01, `:fails_gatekeeper_check` |
 | `browserino` | 1.1.16 | `alexstrnik/browserino` uses a deprecated stanza |
-| `freetube` | 0.25.3 | disabled upstream 2026-09-01, `:fails_gatekeeper_check` |
+| `freetube` | 0.26.0 | disabled upstream 2026-09-01, `:fails_gatekeeper_check` |
 | `jd-gui` | 1.6.6 | disabled upstream 2026-09-01, `:fails_gatekeeper_check` |
-| `mew-notch` | 2.2.2 | `monuk7735/tap` uses deprecated stanzas |
+| `mew-notch` | 2.4.0 | `monuk7735/tap` uses deprecated stanzas |
 
 ### What was changed
 
